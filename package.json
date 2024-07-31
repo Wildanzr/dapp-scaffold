@@ -11,7 +11,11 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@chakra-ui/react": "^2.8.2",
+    "@emotion/react": "^11.13.0",
+    "@emotion/styled": "^11.13.0",
     "@heroicons/react": "^1.0.5",
+    "@metaplex-foundation/js": "^0.20.1",
     "@metaplex-foundation/mpl-candy-machine": "^6.0.0-alpha.20",
     "@metaplex-foundation/mpl-token-metadata": "^3.2.0-alpha.0",
     "@metaplex-foundation/mpl-toolbox": "^0.9.4",
@@ -28,6 +32,7 @@
     "bs58": "^6.0.0",
     "daisyui": "^1.24.3",
     "date-fns": "^2.29.3",
+    "framer-motion": "^11.3.19",
     "immer": "^9.0.12",
     "next": "^13.1.5",
     "next-compose-plugins": "^2.2.1",
