@@ -11,8 +11,11 @@ import {
 } from "@metaplex-foundation/umi";
 import {
   fetchCandyMachine,
+  getMerkleProof,
+  getMerkleRoot,
   mintV2,
   mplCandyMachine,
+  route,
   safeFetchCandyGuard,
 } from "@metaplex-foundation/mpl-candy-machine";
 import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
@@ -20,6 +23,7 @@ import { mplTokenMetadata } from "@metaplex-foundation/mpl-token-metadata";
 import { setComputeUnitLimit } from "@metaplex-foundation/mpl-toolbox";
 import { clusterApiUrl } from "@solana/web3.js";
 import bs58 from "bs58";
+import { allowList } from "constant/common";
 
 // These access the environment variables we defined in the .env file
 const quicknodeEndpoint =
@@ -61,11 +65,24 @@ export const CandyMint: FC = () => {
       umi,
       candyMachine.mintAuthority
     );
+
     try {
       // Mint from the Candy Machine.
       const nftMint = generateSigner(umi);
       const transaction = transactionBuilder()
         .add(setComputeUnitLimit(umi, { units: 800_000 }))
+        .add(
+          route(umi, {
+            guard: "allowList",
+            candyMachine: candyMachine.publicKey,
+            candyGuard: candyGuard?.publicKey,
+            routeArgs: {
+              path: "proof",
+              merkleRoot: getMerkleRoot(allowList),
+              merkleProof: getMerkleProof(allowList, publicKey(umi.identity)),
+            },
+          })
+        )
         .add(
           mintV2(umi, {
             candyMachine: candyMachine.publicKey,
@@ -75,6 +92,7 @@ export const CandyMint: FC = () => {
             collectionUpdateAuthority: candyMachine.authority,
             mintArgs: {
               solPayment: some({ destination: treasury }),
+              allowList: some({ merkleRoot: getMerkleRoot(allowList) }),
             },
           })
         );
