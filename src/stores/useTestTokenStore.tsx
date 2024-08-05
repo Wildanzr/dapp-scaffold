@@ -1,15 +1,11 @@
 import create, { State } from "zustand";
-import {
-  Connection,
-  PublicKey,
-  Keypair,
-  Transaction,
-  sendAndConfirmTransaction,
-  SystemProgram,
-} from "@solana/web3.js";
+import { Connection, PublicKey, Keypair, Transaction } from "@solana/web3.js";
 import {
   getOrCreateAssociatedTokenAccount,
   createMintToInstruction,
+  createAssociatedTokenAccountInstruction,
+  getAssociatedTokenAddress,
+  getAccount,
 } from "@solana/spl-token";
 import { WalletContextState } from "@solana/wallet-adapter-react";
 
@@ -45,31 +41,51 @@ const useTestTokenStore = create<TestTokenStore>((set, _get) => ({
     const fromWallet = Keypair.fromSecretKey(
       Uint8Array.from(JSON.parse(process.env.NEXT_PUBLIC_AUTHORITY_KEY_PAIR))
     );
+    let associatedTokenAddress: PublicKey;
 
+    // CHECK IF ASSOCIATED TOKEN ACCOUNT EXIST OR NOT
     try {
-      const toTokenAccount = await getOrCreateAssociatedTokenAccount(
-        connection,
-        fromWallet, // SIGNER SHOULD BE USER
+      associatedTokenAddress = await getAssociatedTokenAddress(
         mint,
-        fromWallet.publicKey // SHOULD BE USER PUBLIC KEY
+        wallet.publicKey
       );
-      console.log("Destination: ", toTokenAccount.address.toBase58());
 
+      await getAccount(connection, associatedTokenAddress);
+    } catch {
+      const createInstruction = createAssociatedTokenAccountInstruction(
+        wallet.publicKey,
+        associatedTokenAddress,
+        wallet.publicKey,
+        mint
+      );
       let transaction = new Transaction();
+      transaction.add(createInstruction);
+      const blockHash = await connection.getLatestBlockhash();
+      transaction.feePayer = wallet.publicKey;
+      transaction.recentBlockhash = blockHash.blockhash;
+      const signed = await wallet.signTransaction(transaction);
+      await connection.sendRawTransaction(signed.serialize());
+    }
 
+    // PROCEED TO MINTING
+    try {
       const mintToInstruction = createMintToInstruction(
         mint,
-        toTokenAccount.address,
+        associatedTokenAddress,
         fromWallet.publicKey,
         amount * 10 ** 9
       );
-
+      let transaction = new Transaction();
       transaction.add(mintToInstruction);
 
-      // FROM WALLET (SIGNER) SHOULD BE USER
-      await sendAndConfirmTransaction(connection, transaction, [fromWallet]);
+      const blockHash = await connection.getLatestBlockhash();
+      transaction.feePayer = wallet.publicKey;
+      transaction.recentBlockhash = blockHash.blockhash;
 
-      console.log(`Minted ${amount} tokens to ${toTokenAccount.address}`);
+      const signed = await wallet.signTransaction(transaction);
+      await connection.sendRawTransaction(signed.serialize());
+
+      console.log(`Minted ${amount} tokens to ${associatedTokenAddress}`);
     } catch (e) {
       console.log(`Error minting tokens: `, e);
     }
