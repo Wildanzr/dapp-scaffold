@@ -7,9 +7,8 @@ import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 
 // Token
 import useUserSOLBalanceStore from "stores/useUserSOLBalanceStore";
-import { tokenMintAddress } from "constant/common";
+import { tokenAddress } from "constant/common";
 import useTestTokenStore from "stores/useTestTokenStore";
-import { Keypair } from "@solana/web3.js";
 
 export const TokenView: FC = ({}) => {
   const wallet = useWallet();
@@ -27,16 +26,18 @@ export const TokenView: FC = ({}) => {
   useEffect(() => {
     if (wallet.publicKey) {
       console.log(wallet.publicKey.toBase58());
-      getTokenSupply(connection, tokenMintAddress);
-      getUserTokenBalance(wallet.publicKey, connection, tokenMintAddress);
+      getTokenSupply(connection, tokenAddress);
+      getUserTokenBalance(wallet.publicKey, connection, tokenAddress);
     }
   }, [wallet.publicKey, connection, getUserTokenBalance, getTokenSupply]);
 
   return (
     <div className="mx-auto p-6 w-screen max-w-7xl flex flex-col">
       <img
-        src={"https://pbs.twimg.com/media/EHPhZNXXkAEqXQ-.jpg"}
-        alt="KCH"
+        src={
+          "https://gateway.pinata.cloud/ipfs/QmYWfK5RjRYcDm5ngJsSvMQKTT4R5mmreb6do8DzJrQuXm"
+        }
+        alt="MEOWWED"
         width={100}
         height={100}
         className="rounded-full aspect-square object-cover self-center mb-4"
@@ -47,11 +48,11 @@ export const TokenView: FC = ({}) => {
         <div className="flex flex-col gap-16">
           <div className="flex flex-col gap-1  items-center ">
             <div className="text-xl">CURRENT TOKEN BALANCE:</div>
-            <div className="font-bold text-xl">{tokenBalance || 0} KCH</div>
+            <div className="font-bold text-xl">{tokenBalance || 0} KCG</div>
           </div>
           <div className="flex flex-col gap-1  items-center ">
             <div className="text-xl">TOKEN SUPPLY:</div>
-            <div className="font-bold text-xl">{tokenSupply || 0} KCH</div>
+            <div className="font-bold text-xl">{tokenSupply || 0} KCG</div>
           </div>
         </div>
 
@@ -59,11 +60,11 @@ export const TokenView: FC = ({}) => {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              mintTokens(connection, tokenMintAddress, amount);
+              mintTokens(connection, tokenAddress, amount, wallet);
             }}
             className="border-[1px] border-white p-6 px-8  rounded-md flex flex-col gap-3"
           >
-            <div className="font-semibold text-center mb-2">Mint KCH Token</div>
+            <div className="font-semibold text-center mb-2">Mint KCG Token</div>
             <input
               value={amount}
               onChange={(e) => setAmount(parseInt(e.target.value))}
@@ -85,7 +86,7 @@ export const TokenView: FC = ({}) => {
         <div>
           <div className="border-[1px] border-white p-6 px-8 rounded-md flex flex-col gap-3">
             <div className="font-semibold text-center mb-2">
-              Transfer KCH Token
+              Transfer KCG Token
             </div>
 
             <input

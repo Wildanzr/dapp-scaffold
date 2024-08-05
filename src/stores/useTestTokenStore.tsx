@@ -1,11 +1,27 @@
 import create, { State } from "zustand";
-import { Connection, PublicKey, Keypair } from "@solana/web3.js";
-import { mintTo, getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
+import {
+  Connection,
+  PublicKey,
+  Keypair,
+  Transaction,
+  sendAndConfirmTransaction,
+  SystemProgram,
+} from "@solana/web3.js";
+import {
+  getOrCreateAssociatedTokenAccount,
+  createMintToInstruction,
+} from "@solana/spl-token";
+import { WalletContextState } from "@solana/wallet-adapter-react";
 
 interface TestTokenStore extends State {
   tokenSupply: number;
   getTokenSupply: (connection: Connection, tokenMintAddress: PublicKey) => void;
-  mintTokens: (connection: Connection, mint: PublicKey, amount: number) => void;
+  mintTokens: (
+    connection: Connection,
+    mint: PublicKey,
+    amount: number,
+    userWallet: WalletContextState
+  ) => void;
 }
 
 const useTestTokenStore = create<TestTokenStore>((set, _get) => ({
@@ -25,33 +41,33 @@ const useTestTokenStore = create<TestTokenStore>((set, _get) => ({
     });
   },
 
-  mintTokens: async (connection, mint, amount) => {
+  mintTokens: async (connection, mint, amount, wallet) => {
     const fromWallet = Keypair.fromSecretKey(
-      Uint8Array.from([
-        57, 126, 253, 103, 115, 102, 223, 163, 178, 151, 6, 100, 77, 76, 203,
-        174, 48, 246, 129, 26, 4, 120, 248, 107, 16, 248, 241, 112, 17, 150, 97,
-        92, 125, 161, 121, 51, 56, 31, 78, 195, 142, 31, 107, 185, 233, 243, 10,
-        216, 38, 94, 215, 128, 55, 127, 207, 203, 43, 195, 186, 250, 151, 146,
-        68, 109,
-      ])
+      Uint8Array.from(JSON.parse(process.env.NEXT_PUBLIC_AUTHORITY_KEY_PAIR))
     );
 
     try {
       const toTokenAccount = await getOrCreateAssociatedTokenAccount(
         connection,
-        fromWallet,
+        fromWallet, // SIGNER SHOULD BE USER
         mint,
-        fromWallet.publicKey
+        fromWallet.publicKey // SHOULD BE USER PUBLIC KEY
       );
+      console.log("Destination: ", toTokenAccount.address.toBase58());
 
-      await mintTo(
-        connection,
-        fromWallet,
+      let transaction = new Transaction();
+
+      const mintToInstruction = createMintToInstruction(
         mint,
         toTokenAccount.address,
         fromWallet.publicKey,
-        amount
+        amount * 10 ** 9
       );
+
+      transaction.add(mintToInstruction);
+
+      // FROM WALLET (SIGNER) SHOULD BE USER
+      await sendAndConfirmTransaction(connection, transaction, [fromWallet]);
 
       console.log(`Minted ${amount} tokens to ${toTokenAccount.address}`);
     } catch (e) {
