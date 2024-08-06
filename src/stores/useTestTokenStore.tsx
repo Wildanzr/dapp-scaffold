@@ -1,7 +1,7 @@
 import create, { State } from "zustand";
 import { Connection, PublicKey, Keypair, Transaction } from "@solana/web3.js";
 import {
-  getOrCreateAssociatedTokenAccount,
+  createTransferCheckedInstruction,
   createMintToInstruction,
   createAssociatedTokenAccountInstruction,
   getAssociatedTokenAddress,
@@ -17,6 +17,13 @@ interface TestTokenStore extends State {
     mint: PublicKey,
     amount: number,
     userWallet: WalletContextState
+  ) => void;
+  transferToken: (
+    connection: Connection,
+    mint: PublicKey,
+    recepient: PublicKey,
+    userWallet: WalletContextState,
+    amount: number
   ) => void;
 }
 
@@ -49,7 +56,6 @@ const useTestTokenStore = create<TestTokenStore>((set, _get) => ({
         mint,
         wallet.publicKey
       );
-
       await getAccount(connection, associatedTokenAddress);
     } catch {
       const createInstruction = createAssociatedTokenAccountInstruction(
@@ -86,12 +92,62 @@ const useTestTokenStore = create<TestTokenStore>((set, _get) => ({
       await connection.sendRawTransaction(signed.serialize());
 
       console.log(`Minted ${amount} tokens to ${associatedTokenAddress}`);
+
+      window.location.reload();
     } catch (e) {
       console.log(`Error minting tokens: `, e);
     }
   },
 
-  // transferToken: async (connection, recepient, sender) => {},
+  transferToken: async (connection, mint, recepient, wallet, amount) => {
+    const decimal = 9;
+    const fromWallet = await getAssociatedTokenAddress(mint, wallet.publicKey);
+
+    let toWallet: PublicKey;
+    try {
+      toWallet = await getAssociatedTokenAddress(mint, recepient);
+      await getAccount(connection, toWallet);
+    } catch {
+      const createInstruction = createAssociatedTokenAccountInstruction(
+        wallet.publicKey,
+        toWallet,
+        recepient,
+        mint
+      );
+      let transaction = new Transaction();
+      transaction.add(createInstruction);
+
+      const blockHash = await connection.getLatestBlockhash();
+      transaction.feePayer = wallet.publicKey;
+      transaction.recentBlockhash = blockHash.blockhash;
+
+      const signed = await wallet.signTransaction(transaction);
+      await connection.sendRawTransaction(signed.serialize());
+    }
+
+    const instruction = createTransferCheckedInstruction(
+      fromWallet,
+      mint,
+      toWallet,
+      wallet.publicKey,
+      amount * 10 ** 9,
+      decimal
+    );
+
+    let transaction = new Transaction();
+    transaction.add(instruction);
+
+    const blockHash = await connection.getLatestBlockhash();
+    transaction.feePayer = wallet.publicKey;
+    transaction.recentBlockhash = blockHash.blockhash;
+
+    const signed = await wallet.signTransaction(transaction);
+    await connection.sendRawTransaction(signed.serialize());
+
+    console.log(`Transfer ${amount} tokens to ${toWallet}`);
+
+    window.location.reload();
+  },
 }));
 
 export default useTestTokenStore;

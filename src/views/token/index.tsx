@@ -9,19 +9,23 @@ import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import useUserSOLBalanceStore from "stores/useUserSOLBalanceStore";
 import { tokenAddress } from "constant/common";
 import useTestTokenStore from "stores/useTestTokenStore";
+import { PublicKey } from "@solana/web3.js";
+import { faIR } from "date-fns/locale";
 
 export const TokenView: FC = ({}) => {
   const wallet = useWallet();
   const { connection } = useConnection();
 
+  const [refetch, setRefetch] = useState<boolean>(false);
   const [amount, setAmount] = useState<number>(0);
+  const [recepient, setRecepient] = useState<string>("");
   const [amountTransfer, setAmountTransfer] = useState<number>(0);
 
   const tokenBalance = useUserSOLBalanceStore((s) => s.tokenBalance);
   const { getUserTokenBalance } = useUserSOLBalanceStore();
 
   const tokenSupply = useTestTokenStore((s) => s.tokenSupply);
-  const { getTokenSupply, mintTokens } = useTestTokenStore();
+  const { getTokenSupply, mintTokens, transferToken } = useTestTokenStore();
 
   useEffect(() => {
     if (wallet.publicKey) {
@@ -29,7 +33,13 @@ export const TokenView: FC = ({}) => {
       getTokenSupply(connection, tokenAddress);
       getUserTokenBalance(wallet.publicKey, connection, tokenAddress);
     }
-  }, [wallet.publicKey, connection, getUserTokenBalance, getTokenSupply]);
+  }, [
+    wallet.publicKey,
+    connection,
+    getUserTokenBalance,
+    getTokenSupply,
+    refetch,
+  ]);
 
   return (
     <div className="mx-auto p-6 w-screen max-w-7xl flex flex-col">
@@ -84,13 +94,27 @@ export const TokenView: FC = ({}) => {
         </div>
 
         <div>
-          <div className="border-[1px] border-white p-6 px-8 rounded-md flex flex-col gap-3">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              transferToken(
+                connection,
+                tokenAddress,
+                new PublicKey(recepient),
+                wallet,
+                amountTransfer
+              );
+            }}
+            className="border-[1px] border-white p-6 px-8 rounded-md flex flex-col gap-3"
+          >
             <div className="font-semibold text-center mb-2">
               Transfer KCG Token
             </div>
 
             <input
               type="text"
+              value={recepient}
+              onChange={(e) => setRecepient(e.target.value)}
               placeholder="Recepient Address"
               className="px-3 outline-none rounded-sm py-2 text-black"
             />
@@ -104,10 +128,13 @@ export const TokenView: FC = ({}) => {
               className="px-3 outline-none rounded-sm py-2 text-black"
             />
 
-            <button className="bg-gradient-to-r from-indigo-500 from-10% via-sky-500 via-30% to-emerald-500 to-90% rounded-md p-2">
+            <button
+              type="submit"
+              className="bg-gradient-to-r from-indigo-500 from-10% via-sky-500 via-30% to-emerald-500 to-90% rounded-md p-2"
+            >
               Transfer
             </button>
-          </div>
+          </form>
         </div>
       </div>
     </div>
