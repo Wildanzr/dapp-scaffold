@@ -166,7 +166,7 @@ const useTestTokenStore = create<TestTokenStore>((set, _get) => ({
         .rpc();
 
       console.log(
-        `Succesfully mint ${quantity} tokens to ${wallet.publicKey.toBase58()}`
+        `Succesfully mint ${quantity} tokens to ${destination.toBase58()}`
       );
       console.log(txHash);
 
